@@ -66,6 +66,103 @@ app.use("/api/categorias", categoriasRoutes);
 app.use("/api/ventas", ventasRoutes);
 
 // ============================================
+// RUTAS DE DEBUG (TEMPORAL - BORRAR DESPUÉS DE CONFIGURAR)
+// ============================================
+
+// Crear usuario admin manualmente
+app.get("/create-admin", async (req, res) => {
+  const bcrypt = require("bcryptjs");
+
+  try {
+    console.log("🔧 Creando usuario admin...");
+    const passwordHash = await bcrypt.hash("admin123", 10);
+
+    db.run(
+      `INSERT OR REPLACE INTO usuarios (id, username, password, nombre, rol, activo, created_at, updated_at) 
+       VALUES (1, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      ["admin", passwordHash, "Administrador", "admin"],
+      function (err) {
+        if (err) {
+          console.error("❌ Error creando admin:", err);
+          return res.json({
+            success: false,
+            error: err.message,
+          });
+        }
+
+        console.log("✅ Usuario admin creado/actualizado con ID:", this.lastID);
+
+        res.json({
+          success: true,
+          message: "Usuario admin creado/actualizado correctamente",
+          id: this.lastID || 1,
+          username: "admin",
+          password: "admin123",
+        });
+      },
+    );
+  } catch (error) {
+    console.error("❌ Error:", error);
+    res.json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Verificar usuarios en la base de datos
+app.get("/check-users", (req, res) => {
+  console.log("🔍 Verificando usuarios...");
+  db.all(
+    "SELECT id, username, nombre, rol, activo FROM usuarios",
+    [],
+    (err, users) => {
+      if (err) {
+        console.error("❌ Error:", err);
+        return res.json({
+          success: false,
+          error: err.message,
+        });
+      }
+
+      console.log("✅ Usuarios encontrados:", users.length);
+      res.json({
+        success: true,
+        total: users.length,
+        users: users,
+      });
+    },
+  );
+});
+
+// Verificar estructura de base de datos
+app.get("/check-db-structure", (req, res) => {
+  console.log("🔍 Verificando estructura de BD...");
+  db.all(
+    "SELECT name FROM sqlite_master WHERE type='table'",
+    [],
+    (err, tables) => {
+      if (err) {
+        console.error("❌ Error:", err);
+        return res.json({
+          success: false,
+          error: err.message,
+        });
+      }
+
+      console.log(
+        "✅ Tablas encontradas:",
+        tables.map((t) => t.name),
+      );
+      res.json({
+        success: true,
+        tables: tables.map((t) => t.name),
+      });
+    },
+  );
+});
+
+// ============================================
 // RUTAS DE PÁGINAS HTML
 // ============================================
 
@@ -220,6 +317,7 @@ const startServer = async () => {
       console.log("╚════════════════════════════════════════════╝\n");
       console.log(`✅ Servidor corriendo en: http://localhost:${PORT}`);
       console.log(`🌍 Entorno: ${isProduction ? "PRODUCCIÓN" : "DESARROLLO"}`);
+      console.log(`📅 Día 10 completado - Tienda Pública\n`);
       console.log("💡 Presioná Ctrl+C para detener el servidor\n");
     });
   } catch (error) {
