@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categorías - Almacén de Barrio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-admin">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/admin/dashboard">
+                🏪 Almacén de Barrio
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/dashboard">📊 Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/productos">📦 Productos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/admin/categorias">📂 Categorías</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/ventas">💰 Ventas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/caja">💵 Caja</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <span class="nav-link">👤 <span id="username-display">Admin</span></span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">🚪 Salir</a>
+                    </li>
+
+
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido -->
+    <div class="container-fluid mt-4">
+        <div id="alert-container"></div>
+
+        <!-- Título y acciones -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h2>📂 Gestión de Categorías</h2>
+                <p class="text-muted">Organiza tus productos por categorías</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <button class="btn btn-primary" onclick="showCreateModal()">
+                    ➕ Nueva Categoría
+                </button>
+            </div>
+        </div>
+
+        <!-- Información -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="alert alert-info">
+                    <strong>💡 Tip:</strong> Las categorías te ayudan a organizar tus productos. No puedes eliminar una
+                    categoría que tenga productos asociados.
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de categorías -->
+        <div class="card">
+            <div class="card-header">
+                📂 Lista de Categorías
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th width="10%">ID</th>
+                                <th width="35%">Nombre</th>
+                                <th width="20%">Productos</th>
+                                <th width="15%">Estado</th>
+                                <th width="20%">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categorias-table">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <div class="loading show">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Categorías predefinidas -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        ℹ️ Categorías Sugeridas para Almacenes
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <ul class="list-unstyled">
+                                    <li>✅ Bebidas</li>
+                                    <li>✅ Almacén</li>
+                                    <li>✅ Bebidas Alcohólicas</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-3">
+                                <ul class="list-unstyled">
+                                    <li>✅ Snacks</li>
+                                    <li>✅ Lácteos</li>
+                                    <li>✅ Limpieza</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-3">
+                                <ul class="list-unstyled">
+                                    <li>• Panadería</li>
+                                    <li>• Congelados</li>
+                                    <li>• Golosinas</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-3">
+                                <ul class="list-unstyled">
+                                    <li>• Cigarrillos</li>
+                                    <li>• Fiambrería</li>
+                                    <li>• Varios</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0"><small>✅ = Ya creadas por defecto</small></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crear/Editar Categoría -->
+    <div class="modal fade" id="categoriaModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">Nueva Categoría</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="categoria-form">
+                        <input type="hidden" id="categoria-id">
+
+                        <div class="mb-3">
+                            <label class="form-label">Nombre *</label>
+                            <input type="text" class="form-control" id="categoria-nombre" required
+                                placeholder="Ej: Panadería, Congelados, etc.">
+                            <small class="text-muted">El nombre debe ser único</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="categoria-descripcion" rows="3"
+                                placeholder="Descripción opcional de la categoría"></textarea>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <strong>⚠️ Importante:</strong> No podrás eliminar una categoría que tenga productos
+                            asociados.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCategoria()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/admin.js"></script>
+    <script src="/js/categorias.js"></script>
+</body>
+
+</html>

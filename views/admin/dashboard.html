@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Almacén de Barrio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-admin">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/admin/dashboard">
+                🏪 Almacén de Barrio
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/admin/dashboard">📊 Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/productos">📦 Productos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/categorias">📂 Categorías</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/ventas">💰 Ventas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/caja">💵 Caja</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <span class="nav-link">👤 <span id="username-display">Admin</span></span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">🚪 Salir</a>
+                    </li>
+
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido -->
+    <div class="container-fluid mt-4">
+        <div id="alert-container"></div>
+
+        <!-- Título -->
+        <div class="row mb-4">
+            <div class="col">
+                <h2>📊 Dashboard</h2>
+                <p class="text-muted">Resumen general del sistema</p>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="icon text-primary">📦</div>
+                    <div class="value text-primary" id="total-productos">0</div>
+                    <div class="label">Total Productos</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="icon text-warning">⚠️</div>
+                    <div class="value text-warning" id="stock-bajo">0</div>
+                    <div class="label">Stock Bajo</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="icon text-success">💰</div>
+                    <div class="value text-success" id="valor-inventario">$0</div>
+                    <div class="label">Valor Inventario</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="icon text-info">📂</div>
+                    <div class="value text-info" id="total-categorias">0</div>
+                    <div class="label">Categorías</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Productos con stock bajo -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        ⚠️ Productos con Stock Bajo
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Categoría</th>
+                                        <th>Stock Actual</th>
+                                        <th>Stock Mínimo</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stock-bajo-table">
+                                    <tr>
+                                        <td colspan="5" class="text-center">Cargando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        // Cargar datos del dashboard
+        async function loadDashboard() {
+            try {
+                // Cargar productos
+                const prodResponse = await fetch('/api/productos');
+                const prodResult = await prodResponse.json();
+
+                // Cargar categorías
+                const catResponse = await fetch('/api/categorias');
+                const catResult = await catResponse.json();
+
+                // Cargar productos con stock bajo
+                const stockResponse = await fetch('/api/productos/stock-bajo');
+                const stockResult = await stockResponse.json();
+
+                // Actualizar stats
+                document.getElementById('total-productos').textContent = prodResult.total;
+                document.getElementById('stock-bajo').textContent = stockResult.total;
+                document.getElementById('total-categorias').textContent = catResult.total;
+
+                // Calcular valor del inventario
+                const valorInventario = prodResult.data.reduce((sum, p) => sum + (p.precio * p.stock), 0);
+                document.getElementById('valor-inventario').textContent = formatPrice(valorInventario);
+
+                // Mostrar productos con stock bajo
+                const tbody = document.getElementById('stock-bajo-table');
+                if (stockResult.total === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-success">✅ No hay productos con stock bajo</td></tr>';
+                } else {
+                    tbody.innerHTML = stockResult.data.map(p => `
+                        <tr>
+                            <td><strong>${p.nombre}</strong></td>
+                            <td>${p.categoria_nombre || 'Sin categoría'}</td>
+                            <td><strong>${p.stock}</strong></td>
+                            <td>${p.stock_minimo}</td>
+                            <td>
+                                <span class="${getStockBadgeClass(p.stock, p.stock_minimo)}">
+                                    ${getStockStatus(p.stock, p.stock_minimo)}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+
+            } catch (error) {
+                console.error('Error cargando dashboard:', error);
+                showAlert('Error al cargar datos del dashboard', 'danger');
+            }
+        }
+
+        // Cargar al iniciar
+        loadDashboard();
+    </script>
+</body>
+
+</html>

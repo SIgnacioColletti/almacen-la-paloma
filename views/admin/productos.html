@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productos - Almacén de Barrio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-admin">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/admin/dashboard">
+                🏪 Almacén de Barrio
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/dashboard">📊 Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/admin/productos">📦 Productos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/categorias">📂 Categorías</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/ventas">💰 Ventas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/caja">💵 Caja</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <span class="nav-link">👤 <span id="username-display">Admin</span></span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">🚪 Salir</a>
+                    </li>
+
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido -->
+    <div class="container-fluid mt-4">
+        <div id="alert-container"></div>
+
+        <!-- Título y acciones -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h2>📦 Gestión de Productos</h2>
+                <p class="text-muted">Administra el inventario del almacén</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <button class="btn btn-success me-2" onclick="showImportModal()">
+                    📥 Importar CSV
+                </button>
+                <button class="btn btn-primary" onclick="showCreateModal()">
+                    ➕ Nuevo Producto
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros y búsqueda -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" id="search-input" placeholder="🔍 Buscar productos...">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filter-category">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="filter-stock">
+                    <option value="">Todos los stocks</option>
+                    <option value="bajo">Stock bajo</option>
+                    <option value="sin">Sin stock</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-secondary w-100" onclick="loadProducts()">
+                    🔄 Actualizar
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabla de productos -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-table">
+                            <tr>
+                                <td colspan="7" class="text-center">
+                                    <div class="loading show">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crear/Editar Producto -->
+    <div class="modal fade" id="productModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">Nuevo Producto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="product-form">
+                        <input type="hidden" id="product-id">
+
+                        <div class="mb-3">
+                            <label class="form-label">Nombre *</label>
+                            <input type="text" class="form-control" id="product-nombre" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="product-descripcion" rows="3"></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Precio *</label>
+                                <input type="number" class="form-control" id="product-precio" step="0.01" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Categoría</label>
+                                <select class="form-select" id="product-categoria">
+                                    <option value="">Sin categoría</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Stock *</label>
+                                <input type="number" class="form-control" id="product-stock" value="0" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Stock Mínimo *</label>
+                                <input type="number" class="form-control" id="product-stock-minimo" value="5" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Código de Barras</label>
+                            <input type="text" class="form-control" id="product-codigo">
+
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Imagen del Producto</label>
+                            <input type="file" class="form-control" id="producto-imagen" accept="image/*">
+                            <small class="text-muted">Formatos: JPG, PNG, GIF, WEBP (máx 5MB)</small>
+                            <div id="preview-imagen" class="mt-2"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveProduct()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajustar Stock -->
+    <div class="modal fade" id="stockModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ajustar Stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Producto</label>
+                        <input type="text" class="form-control" id="stock-product-name" readonly>
+                        <input type="hidden" id="stock-product-id">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Stock Actual</label>
+                        <input type="number" class="form-control" id="stock-current" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ajuste (positivo para sumar, negativo para restar)</label>
+                        <input type="number" class="form-control" id="stock-ajuste" placeholder="Ej: 10 o -5">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="updateStock()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Importar CSV -->
+    <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">📥 Importar Productos desde CSV</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>📋 Formato del archivo CSV:</strong><br>
+                        El archivo debe tener las siguientes columnas (en este orden):<br>
+                        <code>nombre,descripcion,precio,stock,stock_minimo,categoria_id,codigo_barras</code>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar archivo CSV</label>
+                        <input type="file" class="form-control" id="csv-file" accept=".csv">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Vista previa:</label>
+                        <div id="csv-preview" class="border rounded p-3"
+                            style="max-height: 300px; overflow-y: auto; background: #f8f9fa;">
+                            <p class="text-muted text-center">Selecciona un archivo para ver la vista previa</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <button class="btn btn-sm btn-secondary" onclick="downloadTemplate()">
+                            📄 Descargar plantilla CSV
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="importCSV()">Importar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        let allProducts = [];
+        let allCategories = [];
+        let productModal;
+        let stockModal;
+        let importModal;
+
+        // Inicializar modales
+        document.addEventListener('DOMContentLoaded', () => {
+            productModal = new bootstrap.Modal(document.getElementById('productModal'));
+            stockModal = new bootstrap.Modal(document.getElementById('stockModal'));
+            importModal = new bootstrap.Modal(document.getElementById('importModal'));
+
+            loadCategories();
+            loadProducts();
+
+            // Búsqueda en tiempo real
+            document.getElementById('search-input').addEventListener('input', filterProducts);
+            document.getElementById('filter-category').addEventListener('change', filterProducts);
+            document.getElementById('filter-stock').addEventListener('change', filterProducts);
+
+            // Listener para vista previa CSV
+            const csvFileInput = document.getElementById('csv-file');
+            if (csvFileInput) {
+                csvFileInput.addEventListener('change', previewCSV);
+            }
+        });
+
+        // Cargar categorías
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/categorias');
+                const result = await response.json();
+
+                allCategories = result.data;
+
+                // Llenar selectores
+                const selects = [
+                    document.getElementById('filter-category'),
+                    document.getElementById('product-categoria')
+                ];
+
+                selects.forEach(select => {
+                    const options = result.data.map(cat =>
+                        `<option value="${cat.id}">${cat.nombre}</option>`
+                    ).join('');
+
+                    if (select.id === 'filter-category') {
+                        select.innerHTML = '<option value="">Todas las categorías</option>' + options;
+                    } else {
+                        select.innerHTML = '<option value="">Sin categoría</option>' + options;
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error cargando categorías:', error);
+            }
+        }
+
+        // Cargar productos
+        async function loadProducts() {
+            try {
+                const response = await fetch('/api/productos');
+                const result = await response.json();
+
+                allProducts = result.data;
+                displayProducts(allProducts);
+
+            } catch (error) {
+                console.error('Error cargando productos:', error);
+                showAlert('Error al cargar productos', 'danger');
+            }
+        }
+
+        // Mostrar productos en la tabla
+        function displayProducts(products) {
+            const tbody = document.getElementById('products-table');
+
+            if (products.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">No se encontraron productos</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = products.map(p => `
+                <tr>
+                    <td>${p.id}</td>
+                    <td>
+                        <strong>${p.nombre}</strong>
+                        ${p.descripcion ? '<br><small class="text-muted">' + p.descripcion + '</small>' : ''}
+                    </td>
+                    <td>${p.categoria_nombre || '<span class="text-muted">Sin categoría</span>'}</td>
+                    <td><strong>${formatPrice(p.precio)}</strong></td>
+                    <td><strong>${p.stock}</strong> / ${p.stock_minimo}</td>
+                    <td>
+                        <span class="${getStockBadgeClass(p.stock, p.stock_minimo)}">
+                            ${getStockStatus(p.stock, p.stock_minimo)}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="showStockModal(${p.id})" title="Ajustar stock">
+                            📊
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="showEditModal(${p.id})" title="Editar">
+                            ✏️
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteProduct(${p.id})" title="Eliminar">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Filtrar productos
+        function filterProducts() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const categoryFilter = document.getElementById('filter-category').value;
+            const stockFilter = document.getElementById('filter-stock').value;
+
+            let filtered = allProducts;
+
+            // Filtro de búsqueda
+            if (searchTerm) {
+                filtered = filtered.filter(p =>
+                    p.nombre.toLowerCase().includes(searchTerm) ||
+                    (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm)) ||
+                    (p.codigo_barras && p.codigo_barras.includes(searchTerm))
+                );
+            }
+
+            // Filtro de categoría
+            if (categoryFilter) {
+                filtered = filtered.filter(p => p.categoria_id == categoryFilter);
+            }
+
+            // Filtro de stock
+            if (stockFilter === 'bajo') {
+                filtered = filtered.filter(p => p.stock > 0 && p.stock <= p.stock_minimo);
+            } else if (stockFilter === 'sin') {
+                filtered = filtered.filter(p => p.stock === 0);
+            }
+
+            displayProducts(filtered);
+        }
+
+        // Mostrar modal de crear
+        function showCreateModal() {
+            document.getElementById('modal-title').textContent = 'Nuevo Producto';
+            document.getElementById('product-form').reset();
+            document.getElementById('product-id').value = '';
+            productModal.show();
+        }
+
+        // Mostrar modal de editar
+        function showEditModal(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) return;
+
+            document.getElementById('modal-title').textContent = 'Editar Producto';
+            document.getElementById('product-id').value = product.id;
+            document.getElementById('product-nombre').value = product.nombre;
+            document.getElementById('product-descripcion').value = product.descripcion || '';
+            document.getElementById('product-precio').value = product.precio;
+            document.getElementById('product-categoria').value = product.categoria_id || '';
+            document.getElementById('product-stock').value = product.stock;
+            document.getElementById('product-stock-minimo').value = product.stock_minimo;
+            document.getElementById('product-codigo').value = product.codigo_barras || '';
+
+            productModal.show();
+        }
+
+        // Guardar producto
+        async function saveProduct() {
+            const id = document.getElementById('product-id').value;
+            const data = {
+                nombre: document.getElementById('product-nombre').value,
+                descripcion: document.getElementById('product-descripcion').value,
+                precio: parseFloat(document.getElementById('product-precio').value),
+                categoria_id: document.getElementById('product-categoria').value || null,
+                stock: parseInt(document.getElementById('product-stock').value),
+                stock_minimo: parseInt(document.getElementById('product-stock-minimo').value),
+                codigo_barras: document.getElementById('product-codigo').value || null
+            };
+
+            try {
+                const url = id ? `/api/productos/${id}` : '/api/productos';
+                const method = id ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    productModal.hide();
+                    loadProducts();
+                } else {
+                    showAlert(result.message, 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error guardando producto:', error);
+                showAlert('Error al guardar producto', 'danger');
+            }
+        }
+
+        // Mostrar modal de ajuste de stock
+        function showStockModal(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) return;
+
+            document.getElementById('stock-product-id').value = product.id;
+            document.getElementById('stock-product-name').value = product.nombre;
+            document.getElementById('stock-current').value = product.stock;
+            document.getElementById('stock-ajuste').value = '';
+
+            stockModal.show();
+        }
+
+        // Actualizar stock
+        async function updateStock() {
+            const id = document.getElementById('stock-product-id').value;
+            const ajuste = parseInt(document.getElementById('stock-ajuste').value);
+
+            if (!ajuste || ajuste === 0) {
+                showAlert('Debe ingresar un ajuste válido', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/productos/${id}/stock`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ cantidad: ajuste })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Stock actualizado correctamente', 'success');
+                    stockModal.hide();
+                    loadProducts();
+                } else {
+                    showAlert(result.message, 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error actualizando stock:', error);
+                showAlert('Error al actualizar stock', 'danger');
+            }
+        }
+
+        // Eliminar producto
+        async function deleteProduct(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) return;
+
+            if (!confirm(`¿Está seguro de eliminar el producto "${product.nombre}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/productos/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    loadProducts();
+                } else {
+                    showAlert(result.message, 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error eliminando producto:', error);
+                showAlert('Error al eliminar producto', 'danger');
+            }
+        }
+
+        // Mostrar modal de importación
+        function showImportModal() {
+            document.getElementById('csv-file').value = '';
+            document.getElementById('csv-preview').innerHTML = '<p class="text-muted text-center">Selecciona un archivo para ver la vista previa</p>';
+            importModal.show();
+        }
+
+        // Vista previa del CSV
+        function previewCSV() {
+            const file = document.getElementById('csv-file').files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const text = e.target.result;
+                const lines = text.split('\n').slice(0, 6); // Primeras 6 líneas
+
+                let preview = '<pre style="margin: 0; font-size: 0.85em;">';
+                preview += lines.join('\n');
+                if (text.split('\n').length > 6) {
+                    preview += '\n... (y más líneas)';
+                }
+                preview += '</pre>';
+
+                document.getElementById('csv-preview').innerHTML = preview;
+            };
+            reader.readAsText(file);
+        }
+
+        // Importar CSV
+        async function importCSV() {
+            const file = document.getElementById('csv-file').files[0];
+            if (!file) {
+                showAlert('Debe seleccionar un archivo', 'warning');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+                const text = e.target.result;
+                const lines = text.split('\n').filter(line => line.trim());
+
+                if (lines.length < 2) {
+                    showAlert('El archivo está vacío o no tiene datos', 'warning');
+                    return;
+                }
+
+                // Procesar cada línea (saltar header si existe)
+                const hasHeader = lines[0].toLowerCase().includes('nombre');
+                const dataLines = hasHeader ? lines.slice(1) : lines;
+
+                let imported = 0;
+                let errors = 0;
+
+                for (const line of dataLines) {
+                    const [nombre, descripcion, precio, stock, stock_minimo, categoria_id, codigo_barras] =
+                        line.split(',').map(s => s.trim());
+
+                    if (!nombre || !precio) {
+                        errors++;
+                        continue;
+                    }
+
+                    const data = {
+                        nombre: nombre,
+                        descripcion: descripcion || null,
+                        precio: parseFloat(precio),
+                        stock: parseInt(stock) || 0,
+                        stock_minimo: parseInt(stock_minimo) || 5,
+                        categoria_id: categoria_id ? parseInt(categoria_id) : null,
+                        codigo_barras: codigo_barras || null
+                    };
+
+                    try {
+                        const response = await fetch('/api/productos', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        });
+
+                        if (response.ok) {
+                            imported++;
+                        } else {
+                            errors++;
+                        }
+                    } catch (error) {
+                        errors++;
+                    }
+                }
+
+                importModal.hide();
+                showAlert(`✅ Importación completada: ${imported} productos importados, ${errors} errores`,
+                    errors > 0 ? 'warning' : 'success');
+                loadProducts();
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Descargar plantilla CSV
+        function downloadTemplate() {
+            const template = `nombre,descripcion,precio,stock,stock_minimo,categoria_id,codigo_barras
+Coca Cola 2.25L,Gaseosa Coca Cola 2.25 litros,1500,50,10,1,7790895001234
+Sprite 1.5L,Gaseosa Sprite 1.5 litros,1200,30,10,1,7790895005678
+Fernet Branca 750ml,Fernet Branca botella 750ml,8500,12,5,3,7790742000123`;
+
+            const blob = new Blob([template], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'plantilla_productos.csv';
+            a.click();
+        }
+    </script>
+</body>
+
+</html>
