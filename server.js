@@ -12,6 +12,7 @@ const { db, initDatabase } = require("./config/database");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === "production";
 
 // ============================================
 // MIDDLEWARES
@@ -31,9 +32,10 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // Cambiar a true si usás HTTPS
+      secure: isProduction, // HTTPS en producción
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24, // 24 horas
+      sameSite: isProduction ? "none" : "lax",
     },
   }),
 );
@@ -67,6 +69,21 @@ app.use("/api/ventas", ventasRoutes);
 // RUTAS DE PÁGINAS HTML
 // ============================================
 
+// Ruta principal - Redirigir a tienda
+app.get("/", (req, res) => {
+  res.redirect("/tienda");
+});
+
+// Redirigir /admin a /admin/login
+app.get("/admin", (req, res) => {
+  res.redirect("/admin/login");
+});
+
+// Ruta de tienda pública (HTML)
+app.get("/tienda", (req, res) => {
+  res.sendFile(path.join(__dirname, "views/public/tienda.html"));
+});
+
 // Ruta de login (HTML)
 app.get("/admin/login", (req, res) => {
   res.sendFile(path.join(__dirname, "views/admin/login.html"));
@@ -97,11 +114,6 @@ app.get("/admin/caja", (req, res) => {
   res.sendFile(path.join(__dirname, "views/admin/caja.html"));
 });
 
-// Ruta de tienda pública (HTML)
-app.get("/tienda", (req, res) => {
-  res.sendFile(path.join(__dirname, "views/public/tienda.html"));
-});
-
 // Ruta de prueba de base de datos
 app.get("/test-db", (req, res) => {
   db.all("SELECT * FROM categorias", [], (err, categorias) => {
@@ -119,22 +131,27 @@ app.get("/test-db", (req, res) => {
           return res.status(500).json({ error: err.message });
         }
 
-        res.json({
-          message: "✅ Base de datos funcionando correctamente",
-          tablas: {
-            categorias: categorias,
-            total_productos: productos.total,
-            total_usuarios: usuarios.total,
+        // Obtener info del usuario admin (sin password)
+        db.get(
+          "SELECT id, username, rol FROM usuarios WHERE username = 'admin'",
+          [],
+          (err, admin) => {
+            res.json({
+              message: "✅ Base de datos funcionando correctamente",
+              environment: isProduction ? "production" : "development",
+              tablas: {
+                categorias: categorias,
+                total_productos: productos.total,
+                total_usuarios: usuarios.total,
+                admin_exists: admin ? true : false,
+                admin_info: admin || null,
+              },
+            });
           },
-        });
+        );
       });
     });
   });
-});
-
-// Ruta principal - Página de bienvenida
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "views/public/tienda.html"));
 });
 
 // ============================================
@@ -192,7 +209,9 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     // Inicializar base de datos
+    console.log("📦 Inicializando base de datos...");
     await initDatabase();
+    console.log("✅ Base de datos inicializada");
 
     // Iniciar servidor
     app.listen(PORT, () => {
@@ -200,7 +219,7 @@ const startServer = async () => {
       console.log("║  🏪  ALMACÉN DE BARRIO - SISTEMA ACTIVO   ║");
       console.log("╚════════════════════════════════════════════╝\n");
       console.log(`✅ Servidor corriendo en: http://localhost:${PORT}`);
-      console.log(`📅 Día 10 completado - Tienda Pública\n`);
+      console.log(`🌍 Entorno: ${isProduction ? "PRODUCCIÓN" : "DESARROLLO"}`);
       console.log("💡 Presioná Ctrl+C para detener el servidor\n");
     });
   } catch (error) {
