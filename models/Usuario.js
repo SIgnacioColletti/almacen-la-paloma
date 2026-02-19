@@ -1,6 +1,6 @@
 // ============================================
 // MODELO: USUARIO
-// Operaciones para autenticación y usuarios
+// Operaciones CRUD para usuarios
 // ============================================
 
 const { db } = require("../config/database");
@@ -8,20 +8,81 @@ const bcrypt = require("bcryptjs");
 
 class Usuario {
   // ============================================
+  // AUTENTICAR USUARIO
+  // ============================================
+  static authenticate(username, password) {
+    return new Promise((resolve, reject) => {
+      console.log("🔍 [Usuario.authenticate] Buscando usuario:", username);
+
+      db.get(
+        "SELECT * FROM usuarios WHERE username = ? AND activo = 1",
+        [username],
+        async (err, user) => {
+          if (err) {
+            console.error("❌ [Usuario.authenticate] Error en BD:", err);
+            reject(err);
+            return;
+          }
+
+          if (!user) {
+            console.log("❌ [Usuario.authenticate] Usuario no encontrado");
+            resolve(null);
+            return;
+          }
+
+          console.log(
+            "✅ [Usuario.authenticate] Usuario encontrado:",
+            user.username,
+          );
+
+          try {
+            // Comparar contraseñas
+            const passwordMatch = await bcrypt.compare(password, user.password);
+
+            if (!passwordMatch) {
+              console.log("❌ [Usuario.authenticate] Contraseña incorrecta");
+              resolve(null);
+              return;
+            }
+
+            console.log("✅ [Usuario.authenticate] Contraseña correcta");
+
+            // Retornar usuario sin el password
+            resolve({
+              id: user.id,
+              username: user.username,
+              nombre: user.nombre,
+              email: user.email,
+              rol: user.rol,
+            });
+          } catch (error) {
+            console.error(
+              "❌ [Usuario.authenticate] Error comparando password:",
+              error,
+            );
+            reject(error);
+          }
+        },
+      );
+    });
+  }
+
+  // ============================================
   // OBTENER TODOS LOS USUARIOS
   // ============================================
   static getAll() {
     return new Promise((resolve, reject) => {
-      const sql =
-        "SELECT id, username, nombre, rol, activo, created_at, last_login FROM usuarios WHERE activo = 1";
-
-      db.all(sql, [], (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
+      db.all(
+        "SELECT id, username, nombre, email, rol, activo FROM usuarios",
+        [],
+        (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows);
+          }
+        },
+      );
     });
   }
 
@@ -30,102 +91,90 @@ class Usuario {
   // ============================================
   static getById(id) {
     return new Promise((resolve, reject) => {
-      const sql =
-        "SELECT id, username, nombre, rol, activo, created_at, last_login FROM usuarios WHERE id = ?";
-
-      db.get(sql, [id], (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(row);
-        }
-      });
+      db.get(
+        "SELECT id, username, nombre, email, rol, activo FROM usuarios WHERE id = ?",
+        [id],
+        (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row);
+          }
+        },
+      );
     });
-  }
-
-  // ============================================
-  // BUSCAR USUARIO POR USERNAME
-  // ============================================
-  static getByUsername(username) {
-    return new Promise((resolve, reject) => {
-      const sql = "SELECT * FROM usuarios WHERE username = ? AND activo = 1";
-
-      db.get(sql, [username], (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(row);
-        }
-      });
-    });
-  }
-
-  // ============================================
-  // AUTENTICAR USUARIO
-  // ============================================
-  static async authenticate(username, password) {
-    try {
-      const user = await this.getByUsername(username);
-
-      if (!user) {
-        return null;
-      }
-
-      const isValid = await bcrypt.compare(password, user.password);
-
-      if (!isValid) {
-        return null;
-      }
-
-      // Actualizar último login
-      await this.updateLastLogin(user.id);
-
-      // Retornar usuario sin contraseña
-      delete user.password;
-      return user;
-    } catch (error) {
-      throw error;
-    }
   }
 
   // ============================================
   // CREAR USUARIO
   // ============================================
-  static async create(username, password, nombre, rol = "admin") {
-    try {
-      const hashedPassword = await bcrypt.hash(password, 10);
+  static async create(data) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Hash de la contraseña
+        const passwordHash = await bcrypt.hash(data.password, 10);
 
-      return new Promise((resolve, reject) => {
-        const sql =
-          "INSERT INTO usuarios (username, password, nombre, rol) VALUES (?, ?, ?, ?)";
-
-        db.run(sql, [username, hashedPassword, nombre, rol], function (err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({
-              id: this.lastID,
-              username,
-              nombre,
-              rol,
-            });
-          }
-        });
-      });
-    } catch (error) {
-      throw error;
-    }
+        db.run(
+          `INSERT INTO usuarios (username, password, nombre, email, rol, activo) 
+           VALUES (?, ?, ?, ?, ?, 1)`,
+          [
+            data.username,
+            passwordHash,
+            data.nombre || null,
+            data.email || null,
+            data.rol || "vendedor",
+          ],
+          function (err) {
+            if (err) {
+              reject(err);
+            } else {
+              resolve({
+                id: this.lastID,
+                username: data.username,
+                nombre: data.nombre,
+                email: data.email,
+                rol: data.rol,
+              });
+            }
+          },
+        );
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   // ============================================
   // ACTUALIZAR USUARIO
   // ============================================
-  static update(id, username, nombre, rol) {
+  static update(id, data) {
     return new Promise((resolve, reject) => {
-      const sql =
-        "UPDATE usuarios SET username = ?, nombre = ?, rol = ? WHERE id = ?";
+      let query = "UPDATE usuarios SET ";
+      const params = [];
+      const updates = [];
 
-      db.run(sql, [username, nombre, rol, id], function (err) {
+      if (data.nombre !== undefined) {
+        updates.push("nombre = ?");
+        params.push(data.nombre);
+      }
+      if (data.email !== undefined) {
+        updates.push("email = ?");
+        params.push(data.email);
+      }
+      if (data.rol !== undefined) {
+        updates.push("rol = ?");
+        params.push(data.rol);
+      }
+      if (data.activo !== undefined) {
+        updates.push("activo = ?");
+        params.push(data.activo);
+      }
+
+      updates.push("updated_at = CURRENT_TIMESTAMP");
+      query += updates.join(", ") + " WHERE id = ?";
+      params.push(id);
+
+      db.run(query, params, function (err) {
         if (err) {
           reject(err);
         } else {
@@ -139,40 +188,24 @@ class Usuario {
   // CAMBIAR CONTRASEÑA
   // ============================================
   static async changePassword(id, newPassword) {
-    try {
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+    return new Promise(async (resolve, reject) => {
+      try {
+        const passwordHash = await bcrypt.hash(newPassword, 10);
 
-      return new Promise((resolve, reject) => {
-        const sql = "UPDATE usuarios SET password = ? WHERE id = ?";
-
-        db.run(sql, [hashedPassword, id], function (err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({ changes: this.changes });
-          }
-        });
-      });
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // ============================================
-  // ACTUALIZAR ÚLTIMO LOGIN
-  // ============================================
-  static updateLastLogin(id) {
-    return new Promise((resolve, reject) => {
-      const sql =
-        "UPDATE usuarios SET last_login = CURRENT_TIMESTAMP WHERE id = ?";
-
-      db.run(sql, [id], function (err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ changes: this.changes });
-        }
-      });
+        db.run(
+          "UPDATE usuarios SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+          [passwordHash, id],
+          function (err) {
+            if (err) {
+              reject(err);
+            } else {
+              resolve({ changes: this.changes });
+            }
+          },
+        );
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
@@ -181,15 +214,17 @@ class Usuario {
   // ============================================
   static delete(id) {
     return new Promise((resolve, reject) => {
-      const sql = "UPDATE usuarios SET activo = 0 WHERE id = ?";
-
-      db.run(sql, [id], function (err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ changes: this.changes });
-        }
-      });
+      db.run(
+        "UPDATE usuarios SET activo = 0 WHERE id = ?",
+        [id],
+        function (err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ changes: this.changes });
+          }
+        },
+      );
     });
   }
 }
